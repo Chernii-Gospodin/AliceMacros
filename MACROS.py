@@ -14,6 +14,7 @@ else:
     with open('user_id.txt', 'w') as f:
         f.write(USER_ID)
 
+print('Программа работает')
 URL = 'https://functions.yandexcloud.net/d4e2lg5232b57723d4ek'
 header_setting = {'Content-Type': 'application/json'}
 print('Программа выполняется')
