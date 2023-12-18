@@ -39,11 +39,10 @@ class Stray:
         self.__image = PIL.Image.open(r'logo.png')
         self.program_condition = 'ЗАПУСТИТЬ программу'
         self.thread_event = threading.Event()
-        self.thread = threading.Thread(target=main_program, args=(self.thread_event,))
+        self.thread = threading.Thread(target=main_program, args=(self.thread_event,)).start()
         self.icon = pystray.Icon('Macros', self.__image,
                                  menu=pystray.Menu(
                                      pystray.MenuItem('ЗАКРЫТЬ программу', self.click),
-                                     pystray.MenuItem('ЗАПУСТИТЬ программу', self.click),
                                      pystray.MenuItem(f'USER_ID: {Display.USER_ID[:14]}...', None)
                                  ))
 
@@ -51,8 +50,6 @@ class Stray:
         if item.text == 'ЗАКРЫТЬ программу':
             self.thread_event.set()
             self.icon.stop()
-        elif item.text == 'ЗАПУСТИТЬ программу':
-            self.thread.start()
 
 
 def main_program(thr_event: threading.Event()):
