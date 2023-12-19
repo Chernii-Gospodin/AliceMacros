@@ -9,7 +9,7 @@ import threading
 import pyperclip
 
 
-class Display(ctk.CTk):
+class FirstWindow(ctk.CTk):
     USER_ID = None
 
     def __init__(self):
@@ -26,50 +26,81 @@ class Display(ctk.CTk):
         self.WarningLabel = ctk.CTkLabel(self, text='После ввода USER_ID команды будут доступны в трее')
         self.WarningLabel.pack(anchor='w')
 
+        self.NotUserID = ctk.CTkLabel(self, text='Неправильный USER_ID', text_color='red')
+
         self.button = ctk.CTkButton(self, text='Я скопировал USER_ID', command=self.insert)
         self.button.pack()
 
     def insert(self):
-        Display.USER_ID = pyperclip.paste()
-        self.destroy()
+        memory = pyperclip.paste()
+        if len(memory) == 64:
+            FirstWindow.USER_ID = pyperclip.paste()
+            self.destroy()
+        else:
+            self.NotUserID.pack()
 
 
 class Stray:
     def __init__(self):
-        self.__image = PIL.Image.open(r'logo.png')
+        self.image = PIL.Image.open(r'logo.png')
         self.program_condition = 'ЗАПУСТИТЬ программу'
         self.thread_event = threading.Event()
         self.thread = threading.Thread(target=main_program, args=(self.thread_event,)).start()
-        self.icon = pystray.Icon('Macros', self.__image,
+        self.icon = pystray.Icon('Macros', self.image,
                                  menu=pystray.Menu(
-                                     pystray.MenuItem('ЗАКРЫТЬ программу', self.click),
-                                     pystray.MenuItem(f'USER_ID: {Display.USER_ID[:14]}...', None)
+                                     pystray.MenuItem('ЗАКРЫТЬ программу', self.close_icon),
+                                     pystray.MenuItem(
+                                         f'USER_ID: {FirstWindow.USER_ID[:7]}...{FirstWindow.USER_ID[-7:]}', None)
                                  ))
 
-    def click(self, icon, item):
-        if item.text == 'ЗАКРЫТЬ программу':
-            self.thread_event.set()
-            self.icon.stop()
+    def close_icon(self):
+        self.thread_event.set()
+        self.icon.stop()
 
 
 def main_program(thr_event: threading.Event()):
     while True:
-        response = requests.post(url='https://functions.yandexcloud.net/d4e2lg5232b57723d4ek', data=Display.USER_ID,
+        response = requests.post(url='https://functions.yandexcloud.net/d4e2lg5232b57723d4ek', data=FirstWindow.USER_ID,
                                  headers={'Content-Type': 'application/json'}).text
         if response != 'None':
             response = json.loads(response)
+            temp_memory = []
             for elem in response:
                 elem = elem.strip("\'\r\"")
-                os.startfile(elem)
-        sleep(0.7)
+
+                try:
+                    os.startfile(elem)
+                except FileNotFoundError:
+                    temp_memory.append(elem)
+
+            if temp_memory:
+                filenotfound = ''
+                for elem in temp_memory:
+                    filenotfound += elem +'\n'
+
+                def window():
+                    temp_window = ctk.CTk()
+                    temp_window.title('Не удалось открыть файл/ссылку')
+
+                    temp_label = ctk.CTkLabel(temp_window, text=f'Не удалось найти следующие файлы/ссылки:\n{filenotfound}')
+                    temp_label.pack()
+
+                    temp_button = ctk.CTkButton(temp_window, text='Выйти', command=temp_window.destroy)
+                    temp_button.pack()
+
+                    temp_window.mainloop()
+
+                threading.Thread(target=window, args=()).start()
+
         if thr_event.is_set():
             break
+        sleep(0.7)
 
 
 if __name__ == '__main__':
-    display = Display()
+    display = FirstWindow()
     display.mainloop()
 
-    if Display.USER_ID is not None:
+    if FirstWindow.USER_ID is not None:
         stray = Stray()
         stray.icon.run()
